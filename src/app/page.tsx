@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Toast from '@/components/Toast';
 
 function isValidPartyCode(code: string): boolean {
   return /^[A-Z0-9]{6}$/.test(code.toUpperCase());
@@ -9,25 +10,35 @@ function isValidPartyCode(code: string): boolean {
 
 function UrlHandler({ 
   onError, 
-  onJoinCode 
+  onJoinCode,
+  onShowToast
 }: { 
   onError: (error: string) => void;
   onJoinCode: (code: string) => void;
+  onShowToast: () => void;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const processedErrorRef = useRef<string | null>(null);
   
   useEffect(() => {
     const joinParam = searchParams.get('join');
     const errorParam = searchParams.get('error');
     
-    // Handle errors
-    if (errorParam === 'party_not_found') {
-      onError('Party not found');
-    } else if (errorParam === 'invalid_code') {
-      onError('Invalid party code');
-    } else if (errorParam === 'auth_failed') {
-      onError('Authentication failed');
+    // Handle errors - only process once per error type
+    if (errorParam && errorParam !== processedErrorRef.current) {
+      processedErrorRef.current = errorParam;
+      
+      if (errorParam === 'party_not_found') {
+        onError('Party not found');
+        onShowToast();
+      } else if (errorParam === 'invalid_code') {
+        onError('Invalid party code');
+        onShowToast();
+      } else if (errorParam === 'auth_failed') {
+        onError('Authentication failed');
+        onShowToast();
+      }
     }
     
     // Handle join redirect
@@ -36,11 +47,15 @@ function UrlHandler({
         router.push(`/api/auth/steam?join=${joinParam.toUpperCase()}`);
       } else {
         // Invalid code format - stay on page and show error
-        router.replace('/?error=invalid_code');
-        onError('Invalid party code');
+        if (processedErrorRef.current !== 'invalid_code') {
+          processedErrorRef.current = 'invalid_code';
+          router.replace('/?error=invalid_code');
+          onError('Invalid party code');
+          onShowToast();
+        }
       }
     }
-  }, [searchParams, router, onError, onJoinCode]);
+  }, [searchParams, router, onError, onJoinCode, onShowToast]);
   
   return null;
 }
@@ -49,11 +64,24 @@ export default function Home() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const lastErrorRef = useRef<string>('');
+
+  const showError = (message: string) => {
+    // Only show toast if error message changed
+    if (lastErrorRef.current !== message) {
+      lastErrorRef.current = message;
+      setError(message);
+      setShowToast(true);
+    } else {
+      setError(message);
+    }
+  };
 
   const handleJoinParty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinCode.trim()) {
-      setError('Please enter a party code');
+      showError('Please enter a party code');
       return;
     }
     
@@ -61,7 +89,7 @@ export default function Home() {
     
     // Validate code format
     if (!isValidPartyCode(normalizedCode)) {
-      setError('Invalid party code format');
+      showError('Invalid party code format');
       return;
     }
     
@@ -70,16 +98,22 @@ export default function Home() {
     if (res.ok) {
       router.push(`/api/auth/steam?join=${normalizedCode}`);
     } else {
-      setError('Party not found');
+      showError('Party not found');
     }
   };
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white relative overflow-hidden">
+      <Toast 
+        message={error} 
+        isVisible={showToast} 
+        onClose={() => setShowToast(false)} 
+      />
       <Suspense fallback={null}>
         <UrlHandler 
           onError={setError} 
           onJoinCode={setJoinCode}
+          onShowToast={() => setShowToast(true)}
         />
       </Suspense>
       
@@ -151,6 +185,8 @@ export default function Home() {
                   onChange={(e) => {
                     setJoinCode(e.target.value.toUpperCase());
                     setError('');
+                    setShowToast(false);
+                    lastErrorRef.current = '';
                   }}
                   className="flex-1 bg-[#12121a] border-2 border-gray-700 rounded-lg px-4 py-3 text-center text-xl font-mono tracking-[0.3em] uppercase placeholder:text-gray-700 focus:outline-none focus:border-[#ff6b35] transition-colors"
                   maxLength={6}

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import Toast from '@/components/Toast';
 
 interface Session {
   steamId: string;
@@ -20,16 +21,38 @@ export default function DashboardClient({ session }: { session: Session }) {
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const processedErrorRef = useRef<string | null>(null);
+  const lastErrorRef = useRef<string>('');
   
-  // Check for error in URL params
+  // Check for error in URL params - only process once
   useEffect(() => {
     const errorParam = searchParams.get('error');
-    if (errorParam === 'party_not_found') {
-      setError('Party not found');
-    } else if (errorParam === 'invalid_code') {
-      setError('Invalid party code');
+    if (errorParam && errorParam !== processedErrorRef.current) {
+      processedErrorRef.current = errorParam;
+      
+      if (errorParam === 'party_not_found') {
+        setError('Party not found');
+        setShowToast(true);
+        lastErrorRef.current = 'Party not found';
+      } else if (errorParam === 'invalid_code') {
+        setError('Invalid party code');
+        setShowToast(true);
+        lastErrorRef.current = 'Invalid party code';
+      }
     }
   }, [searchParams]);
+  
+  const showError = (message: string) => {
+    // Only show toast if error message changed
+    if (lastErrorRef.current !== message) {
+      lastErrorRef.current = message;
+      setError(message);
+      setShowToast(true);
+    } else {
+      setError(message);
+    }
+  };
 
   const createParty = async () => {
     setLoading(true);
@@ -44,7 +67,7 @@ export default function DashboardClient({ session }: { session: Session }) {
   const joinParty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinCode.trim()) {
-      setError('Please enter a party code');
+      showError('Please enter a party code');
       return;
     }
     
@@ -52,24 +75,30 @@ export default function DashboardClient({ session }: { session: Session }) {
     
     // Validate code format
     if (!isValidPartyCode(normalizedCode)) {
-      setError('Invalid party code format');
+      showError('Invalid party code format');
       return;
     }
     
     setLoading(true);
     setError('');
+    setShowToast(false);
     
     const res = await fetch(`/api/party/${normalizedCode}`, { method: 'POST' });
     if (res.ok) {
       router.push(`/party/${normalizedCode}`);
     } else {
-      setError('Party not found');
+      showError('Party not found');
     }
     setLoading(false);
   };
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white p-8 relative">
+      <Toast 
+        message={error} 
+        isVisible={showToast} 
+        onClose={() => setShowToast(false)} 
+      />
       {/* Ambient glow */}
       <div className="absolute top-0 left-1/3 w-96 h-96 bg-green-500/5 rounded-full blur-[150px]" />
       
@@ -141,6 +170,8 @@ export default function DashboardClient({ session }: { session: Session }) {
                 onChange={(e) => {
                   setJoinCode(e.target.value.toUpperCase());
                   setError('');
+                  setShowToast(false);
+                  lastErrorRef.current = '';
                 }}
                 className="flex-1 bg-[#0a0a0f] border-2 border-gray-700 rounded-lg px-4 py-3 text-center text-2xl font-mono tracking-[0.3em] uppercase placeholder:text-gray-700 focus:outline-none focus:border-[#ff6b35] transition-colors"
                 maxLength={6}
