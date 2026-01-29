@@ -1,6 +1,6 @@
 # 🎮 SquadRoll
 
-**"What should we play tonight?" — solved forever.**
+**"What should we play?" — solved forever.**
 
 SquadRoll finds multiplayer games that everyone in your party owns on Steam, then randomly picks one for you.
 
@@ -9,7 +9,7 @@ SquadRoll finds multiplayer games that everyone in your party owns on Steam, the
 - **Steam Login** - Quick OpenID auth, no passwords
 - **Party System** - Create/join with 6-character codes
 - **Game Matching** - Finds multiplayer games common to ALL players
-- **Random Pick** - Fun rolling animation to pick tonight's game
+- **Random Pick** - Fun rolling animation to pick the game
 - **Launch Game** - Direct `steam://` link to start playing
 
 ## Tech Stack

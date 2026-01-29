@@ -13,11 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SquadRoll - What Should We Play Tonight?",
+  title: "SquadRoll - What Should We Play?",
   description: "Find multiplayer games your whole squad owns on Steam, then let fate decide. No more arguments, just games.",
   keywords: ["steam", "multiplayer", "games", "party", "friends", "random", "picker"],
   openGraph: {
-    title: "SquadRoll - What Should We Play Tonight?",
+    title: "SquadRoll - What Should We Play?",
     description: "Find multiplayer games your whole squad owns on Steam, then let fate decide.",
     url: "https://squadroll.com",
     siteName: "SquadRoll",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SquadRoll - What Should We Play Tonight?",
+    title: "SquadRoll - What Should We Play?",
     description: "Find multiplayer games your whole squad owns on Steam, then let fate decide.",
   },
   icons: {
