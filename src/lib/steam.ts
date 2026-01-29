@@ -9,7 +9,6 @@ export interface SteamGame {
   name: string;
   playtime_forever: number;
   img_icon_url?: string;
-  has_community_visible_stats?: boolean;
 }
 
 export interface GameDetails {
@@ -20,15 +19,18 @@ export interface GameDetails {
   categories?: { id: number; description: string }[];
 }
 
-// Multiplayer category IDs from Steam
+// ALL multiplayer-related category IDs from Steam
 const MULTIPLAYER_CATEGORIES = [
   1,   // Multi-player
   9,   // Co-op
+  20,  // MMO
   27,  // Cross-Platform Multiplayer
   36,  // Online Multi-Player
   37,  // Local Multi-Player
   38,  // Online Co-op
   39,  // Local Co-op
+  47,  // LAN Co-op
+  48,  // LAN PvP
   49,  // PvP
 ];
 
@@ -42,83 +44,82 @@ export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
   return data.response?.games || [];
 }
 
-export async function getGameDetails(appId: number): Promise<GameDetails | null> {
+export async function checkIfMultiplayer(appId: number): Promise<boolean> {
   try {
     const url = `${STEAM_STORE_BASE}/api/appdetails?appids=${appId}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'en-US,en;q=0.9' },
+    });
+    
+    if (!res.ok) return true; // If we can't check, assume it might be multiplayer
     
     const data = await res.json();
     const gameData = data[appId.toString()];
     
-    if (!gameData?.success || !gameData.data) return null;
+    if (!gameData?.success || !gameData.data) {
+      return true; // Can't verify, include it
+    }
     
     const categories = gameData.data.categories || [];
-    const isMultiplayer = categories.some((cat: { id: number }) => 
+    return categories.some((cat: { id: number }) => 
       MULTIPLAYER_CATEGORIES.includes(cat.id)
     );
-    
-    return {
-      appid: appId,
-      name: gameData.data.name,
-      isMultiplayer,
-      headerImage: gameData.data.header_image,
-      categories,
-    };
   } catch {
-    return null;
+    return true; // On error, include the game
   }
 }
 
-export async function getMultiplayerGames(steamId: string): Promise<GameDetails[]> {
-  const ownedGames = await getOwnedGames(steamId);
-  const multiplayerGames: GameDetails[] = [];
-  
-  // Process in batches to avoid rate limiting
-  const batchSize = 10;
-  for (let i = 0; i < ownedGames.length; i += batchSize) {
-    const batch = ownedGames.slice(i, i + batchSize);
-    const results = await Promise.all(
-      batch.map(game => getGameDetails(game.appid))
-    );
-    
-    for (const result of results) {
-      if (result?.isMultiplayer) {
-        multiplayerGames.push(result);
-      }
-    }
-    
-    // Small delay between batches
-    if (i + batchSize < ownedGames.length) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-  }
-  
-  return multiplayerGames;
+// Get all games (no filtering) - filtering happens after finding common games
+export async function getAllGames(steamId: string): Promise<SteamGame[]> {
+  const games = await getOwnedGames(steamId);
+  console.log(`Found ${games.length} owned games for ${steamId}`);
+  return games;
 }
 
-export function findCommonGames(playerGames: GameDetails[][]): GameDetails[] {
-  if (playerGames.length === 0) return [];
-  if (playerGames.length === 1) return playerGames[0];
+// Find common games between all players, THEN filter for multiplayer
+export async function findCommonMultiplayerGames(
+  allPlayerGames: SteamGame[][]
+): Promise<{ appid: number; name: string }[]> {
+  if (allPlayerGames.length === 0) return [];
   
-  // Find games that exist in all players' libraries
-  const firstPlayerAppIds = new Set(playerGames[0].map(g => g.appid));
+  // Step 1: Find games ALL players own
+  const firstPlayerAppIds = new Set(allPlayerGames[0].map(g => g.appid));
   
   const commonAppIds = [...firstPlayerAppIds].filter(appId =>
-    playerGames.every(games => games.some(g => g.appid === appId))
+    allPlayerGames.every(playerGames => 
+      playerGames.some(g => g.appid === appId)
+    )
   );
   
-  // Return full game details from first player's list
-  return playerGames[0].filter(g => commonAppIds.includes(g.appid));
+  // Get game names from first player's list
+  const commonGames = allPlayerGames[0]
+    .filter(g => commonAppIds.includes(g.appid))
+    .map(g => ({ appid: g.appid, name: g.name }));
+  
+  console.log(`Found ${commonGames.length} common games, checking for multiplayer...`);
+  
+  // Step 2: Filter to multiplayer only (much smaller list to check!)
+  const multiplayerGames: { appid: number; name: string }[] = [];
+  
+  for (const game of commonGames) {
+    const isMultiplayer = await checkIfMultiplayer(game.appid);
+    if (isMultiplayer) {
+      multiplayerGames.push(game);
+    }
+    // Small delay to be nice to Steam API
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  
+  console.log(`${multiplayerGames.length} of ${commonGames.length} common games are multiplayer`);
+  return multiplayerGames.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function pickRandomGame(games: GameDetails[]): GameDetails | null {
+export function pickRandomGame<T>(games: T[]): T | null {
   if (games.length === 0) return null;
-  const index = Math.floor(Math.random() * games.length);
-  return games[index];
+  return games[Math.floor(Math.random() * games.length)];
 }
 
-// Steam OpenID URLs
+// Steam OpenID
 export function getSteamLoginUrl(returnUrl: string): string {
   const params = new URLSearchParams({
     'openid.ns': 'http://specs.openid.net/auth/2.0',

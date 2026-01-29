@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMultiplayerGames } from '@/lib/steam';
+import { getAllGames } from '@/lib/steam';
 import { storePlayerGames, updateMemberGamesLoaded } from '@/lib/redis';
 
 export async function POST(request: NextRequest) {
@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
   }
   
   try {
-    // Fetch multiplayer games for this user
-    const games = await getMultiplayerGames(session.steamId);
+    // Get ALL games (no filtering yet - that happens when finding common games)
+    const games = await getAllGames(session.steamId);
     
     // Store in Redis
     await storePlayerGames(
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       gameCount: games.length,
-      games: games.slice(0, 10), // Return preview
     });
   } catch (error) {
     console.error('Error loading games:', error);

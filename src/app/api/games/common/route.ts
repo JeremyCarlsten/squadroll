@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getParty, getPlayerGames } from '@/lib/redis';
+import { findCommonMultiplayerGames } from '@/lib/steam';
 
 export async function GET(request: NextRequest) {
   const partyCode = request.nextUrl.searchParams.get('code');
@@ -24,31 +25,24 @@ export async function GET(request: NextRequest) {
   }
   
   // Get all players' games
-  const allGames: { appid: number; name: string }[][] = [];
+  const allPlayerGames: { appid: number; name: string }[][] = [];
   for (const member of party.members) {
     const games = await getPlayerGames(member.odId, partyCode.toUpperCase());
     if (games) {
-      allGames.push(games);
+      allPlayerGames.push(games);
     }
   }
   
-  if (allGames.length !== party.members.length) {
+  if (allPlayerGames.length !== party.members.length) {
     return NextResponse.json({ error: 'Missing game data' }, { status: 500 });
   }
   
-  // Find common games
-  const firstPlayerAppIds = new Set(allGames[0].map(g => g.appid));
-  const commonAppIds = [...firstPlayerAppIds].filter(appId =>
-    allGames.every(games => games.some(g => g.appid === appId))
-  );
-  
-  const commonGames = allGames[0]
-    .filter(g => commonAppIds.includes(g.appid))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // Find common games AND filter for multiplayer
+  const commonMultiplayerGames = await findCommonMultiplayerGames(allPlayerGames);
   
   return NextResponse.json({ 
     ready: true,
-    commonGames,
-    count: commonGames.length,
+    commonGames: commonMultiplayerGames,
+    count: commonMultiplayerGames.length,
   });
 }
