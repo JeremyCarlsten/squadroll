@@ -43,51 +43,69 @@ export default function DashboardClient({ session }: { session: Session }) {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-8">
-      <div className="max-w-2xl mx-auto">
+    <main className="min-h-screen bg-[#0a0a0f] text-white p-8 relative">
+      {/* Ambient glow */}
+      <div className="absolute top-0 left-1/3 w-96 h-96 bg-green-500/5 rounded-full blur-[150px]" />
+      
+      <div className="max-w-2xl mx-auto relative">
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
-          <h1 className="text-3xl font-bold">🎮 SquadRoll</h1>
+          <h1 className="text-3xl font-black">
+            <span className="text-[#39ff14]">SQUAD</span>
+            <span className="text-[#ff6b35]">ROLL</span>
+          </h1>
           <div className="flex items-center gap-4">
-            <Image
-              src={session.avatarfull}
-              alt={session.personaname}
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-            <span className="font-medium">{session.personaname}</span>
+            <div className="flex items-center gap-3 bg-[#12121a] rounded-full pl-1 pr-4 py-1">
+              <Image
+                src={session.avatarfull}
+                alt={session.personaname}
+                width={32}
+                height={32}
+                className="rounded-full ring-2 ring-[#39ff14]"
+              />
+              <span className="font-mono text-sm text-[#39ff14]">{session.personaname}</span>
+            </div>
             <a
               href="/api/auth/logout"
-              className="text-gray-400 hover:text-white text-sm"
+              className="text-gray-600 hover:text-red-500 text-sm font-mono"
             >
-              Logout
+              [EJECT]
             </a>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="space-y-8">
-          {/* Create Party */}
-          <div className="bg-white/5 backdrop-blur rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Start a Squad</h2>
-            <p className="text-gray-400 mb-6">
-              Create a party and invite your friends to join
+        {/* Main Actions */}
+        <div className="space-y-6">
+          {/* Create Party - Big Button */}
+          <div className="bg-[#12121a] border-2 border-[#39ff14]/20 rounded-2xl p-10 text-center hover:border-[#39ff14]/50 transition-colors">
+            <div className="text-6xl mb-4">🕹️</div>
+            <h2 className="text-2xl font-black text-[#39ff14] mb-2">START A SQUAD</h2>
+            <p className="text-gray-500 font-mono text-sm mb-8">
+              Create a party and get a code to share
             </p>
             <button
               onClick={createParty}
               disabled={loading}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 px-8 py-4 rounded-xl font-bold text-xl transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+              className="bg-[#39ff14] hover:bg-[#5fff3f] text-black px-10 py-4 rounded-xl font-black text-xl uppercase tracking-wider transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+              style={{ boxShadow: '0 0 30px #39ff1440' }}
             >
-              {loading ? 'Creating...' : '🎉 Create Party'}
+              {loading ? 'CREATING...' : '🎲 NEW GAME'}
             </button>
           </div>
 
+          {/* Divider */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-gray-600 font-mono text-sm">OR</span>
+            <div className="flex-1 h-px bg-gray-800" />
+          </div>
+
           {/* Join Party */}
-          <div className="bg-white/5 backdrop-blur rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Join a Squad</h2>
-            <p className="text-gray-400 mb-6">
-              Got a code? Enter it below
+          <div className="bg-[#12121a] border-2 border-[#ff6b35]/20 rounded-2xl p-10 text-center hover:border-[#ff6b35]/50 transition-colors">
+            <div className="text-6xl mb-4">🎫</div>
+            <h2 className="text-2xl font-black text-[#ff6b35] mb-2">JOIN A SQUAD</h2>
+            <p className="text-gray-500 font-mono text-sm mb-8">
+              Got a code from a friend?
             </p>
             <form onSubmit={joinParty} className="flex gap-3 max-w-sm mx-auto">
               <input
@@ -98,18 +116,18 @@ export default function DashboardClient({ session }: { session: Session }) {
                   setJoinCode(e.target.value.toUpperCase());
                   setError('');
                 }}
-                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-center text-xl font-mono tracking-widest uppercase placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex-1 bg-[#0a0a0f] border-2 border-gray-700 rounded-lg px-4 py-3 text-center text-2xl font-mono tracking-[0.3em] uppercase placeholder:text-gray-700 focus:outline-none focus:border-[#ff6b35] transition-colors"
                 maxLength={6}
               />
               <button
                 type="submit"
                 disabled={loading || !joinCode.trim()}
-                className="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                className="bg-[#ff6b35] hover:bg-[#ff8555] text-black px-8 py-3 rounded-lg font-bold text-lg transition-colors disabled:opacity-50"
               >
-                Join
+                GO
               </button>
             </form>
-            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+            {error && <p className="text-red-500 text-sm mt-3 font-mono">{error}</p>}
           </div>
         </div>
       </div>

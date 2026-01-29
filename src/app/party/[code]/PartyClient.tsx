@@ -45,8 +45,7 @@ export default function PartyClient({
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [rolling, setRolling] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  const isHost = party.hostSteamId === session.steamId;
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Poll for party updates
   useEffect(() => {
@@ -57,15 +56,13 @@ export default function PartyClient({
         setParty(data.party);
       }
     }, 3000);
-
     return () => clearInterval(interval);
   }, [party.code]);
 
-  // Check for common games when all members loaded
+  // Check for common games
   const checkCommonGames = useCallback(async () => {
     const res = await fetch(`/api/games/common?code=${party.code}`);
     const data = await res.json();
-    
     if (data.ready) {
       setAllReady(true);
       setCommonGames(data.commonGames);
@@ -85,7 +82,6 @@ export default function PartyClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ partyCode: party.code }),
     });
-    
     if (res.ok) {
       setMyGamesLoaded(true);
     }
@@ -108,10 +104,11 @@ export default function PartyClient({
     
     setRolling(true);
     setSelectedGame(null);
+    setShowConfetti(false);
     
-    // Animate through games
+    // Slot machine style spin
     let count = 0;
-    const maxCount = 20;
+    const maxCount = 25;
     const interval = setInterval(() => {
       const randomIdx = Math.floor(Math.random() * commonGames.length);
       setSelectedGame(commonGames[randomIdx]);
@@ -120,75 +117,110 @@ export default function PartyClient({
       if (count >= maxCount) {
         clearInterval(interval);
         setRolling(false);
-        // Final pick
         const finalIdx = Math.floor(Math.random() * commonGames.length);
         setSelectedGame(commonGames[finalIdx]);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
       }
-    }, 100);
+    }, 80 + count * 5); // Gradually slow down
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-8">
-      <div className="max-w-3xl mx-auto">
+    <main className="min-h-screen bg-[#0a0a0f] text-white p-6 relative overflow-hidden">
+      {/* Ambient effects */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-[200px]" />
+      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-green-500/5 rounded-full blur-[200px]" />
+      
+      {/* Confetti effect */}
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-50">
+          {[...Array(50)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute animate-bounce"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `-20px`,
+                fontSize: '24px',
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+              }}
+            >
+              {['🎮', '🎲', '🎰', '🕹️', '⭐', '🎯'][Math.floor(Math.random() * 6)]}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="max-w-3xl mx-auto relative">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">🎮 SquadRoll</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-black">
+            <span className="text-[#39ff14]">SQUAD</span>
+            <span className="text-[#ff6b35]">ROLL</span>
+          </h1>
           <button
             onClick={leaveParty}
-            className="text-gray-400 hover:text-red-400 text-sm"
+            className="text-gray-600 hover:text-red-500 text-sm font-mono"
           >
-            Leave Party
+            [LEAVE]
           </button>
         </div>
 
-        {/* Party Code */}
-        <div className="bg-white/5 backdrop-blur rounded-2xl p-6 mb-8 text-center">
-          <p className="text-gray-400 mb-2">Party Code</p>
+        {/* Party Code Display */}
+        <div className="bg-[#12121a] border-2 border-[#ffd700]/30 rounded-xl p-6 mb-6 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ffd700]/5 to-transparent" />
+          <p className="text-gray-500 font-mono text-xs mb-2">PARTY CODE</p>
           <button
             onClick={copyCode}
-            className="text-5xl font-mono font-bold tracking-[0.3em] hover:text-purple-400 transition-colors"
+            className="text-5xl font-black tracking-[0.4em] text-[#ffd700] hover:scale-105 transition-transform neon-flicker"
+            style={{ textShadow: '0 0 20px #ffd700, 0 0 40px #ffd70050' }}
           >
             {party.code}
           </button>
-          <p className="text-sm text-gray-500 mt-2">
-            {copied ? '✓ Copied!' : 'Click to copy'}
+          <p className="text-xs text-gray-600 mt-2 font-mono">
+            {copied ? '✓ COPIED!' : 'CLICK TO COPY'}
           </p>
         </div>
 
-        {/* Members */}
-        <div className="bg-white/5 backdrop-blur rounded-2xl p-6 mb-8">
-          <h2 className="text-xl font-bold mb-4">Squad ({party.members.length})</h2>
-          <div className="space-y-3">
+        {/* Squad Members */}
+        <div className="bg-[#12121a] border border-gray-800 rounded-xl p-5 mb-6">
+          <h2 className="text-sm font-mono text-gray-500 mb-4">SQUAD [{party.members.length}]</h2>
+          <div className="grid gap-2">
             {party.members.map((member) => (
               <div
                 key={member.odId}
-                className="flex items-center gap-4 bg-white/5 rounded-xl p-3"
+                className={`flex items-center gap-3 rounded-lg p-3 transition-colors ${
+                  member.gamesLoaded 
+                    ? 'bg-[#39ff14]/10 border border-[#39ff14]/30' 
+                    : 'bg-[#0a0a0f] border border-gray-800'
+                }`}
               >
                 <Image
                   src={member.avatarfull}
                   alt={member.personaname}
-                  width={48}
-                  height={48}
-                  className="rounded-full"
+                  width={40}
+                  height={40}
+                  className={`rounded-full ring-2 ${member.gamesLoaded ? 'ring-[#39ff14]' : 'ring-gray-700'}`}
                 />
-                <div className="flex-1">
-                  <div className="font-medium">
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-sm truncate">
                     {member.personaname}
                     {member.odId === party.hostSteamId && (
-                      <span className="ml-2 text-xs bg-purple-600 px-2 py-0.5 rounded">
+                      <span className="ml-2 text-[10px] bg-[#ff6b35] text-black px-1.5 py-0.5 rounded font-bold">
                         HOST
                       </span>
                     )}
                     {member.odId === session.steamId && (
-                      <span className="ml-2 text-xs text-gray-400">(you)</span>
+                      <span className="ml-2 text-gray-600 text-xs">(you)</span>
                     )}
                   </div>
                 </div>
-                <div>
+                <div className="text-xs font-mono">
                   {member.gamesLoaded ? (
-                    <span className="text-green-400">✓ Ready</span>
+                    <span className="text-[#39ff14]">✓ READY</span>
                   ) : (
-                    <span className="text-yellow-400">Loading...</span>
+                    <span className="text-yellow-500 animate-pulse">LOADING...</span>
                   )}
                 </div>
               </div>
@@ -196,85 +228,117 @@ export default function PartyClient({
           </div>
         </div>
 
-        {/* Load Games / Status */}
+        {/* Load Games Button */}
         {!myGamesLoaded && (
-          <div className="bg-white/5 backdrop-blur rounded-2xl p-6 mb-8 text-center">
-            <h2 className="text-xl font-bold mb-4">Load Your Games</h2>
-            <p className="text-gray-400 mb-6">
-              We&apos;ll scan your Steam library for multiplayer games
+          <div className="bg-[#12121a] border-2 border-blue-500/30 rounded-xl p-8 mb-6 text-center">
+            <div className="text-5xl mb-4">📚</div>
+            <h2 className="text-xl font-black text-blue-400 mb-2">LOAD YOUR LIBRARY</h2>
+            <p className="text-gray-500 font-mono text-sm mb-6">
+              Scanning for multiplayer games...
             </p>
             <button
               onClick={loadMyGames}
               disabled={loadingGames}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 px-8 py-4 rounded-xl font-bold text-lg transition-all hover:scale-105 disabled:opacity-50"
+              className="bg-blue-500 hover:bg-blue-400 text-black px-8 py-4 rounded-xl font-bold text-lg transition-all hover:scale-105 disabled:opacity-50"
+              style={{ boxShadow: '0 0 20px #3b82f640' }}
             >
               {loadingGames ? (
-                <>
-                  <span className="animate-spin inline-block mr-2">⏳</span>
-                  Scanning Library...
-                </>
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin">⚙️</span> SCANNING...
+                </span>
               ) : (
-                '📚 Load My Games'
+                '🎮 SCAN GAMES'
               )}
             </button>
           </div>
         )}
 
-        {/* Roll Section */}
+        {/* Waiting for others */}
+        {myGamesLoaded && !allReady && (
+          <div className="bg-[#12121a] border border-gray-800 rounded-xl p-8 text-center">
+            <div className="text-5xl mb-4 animate-bounce">⏳</div>
+            <h2 className="text-xl font-black text-gray-400 mb-2">WAITING FOR SQUAD</h2>
+            <div className="flex justify-center gap-2 mt-4">
+              {party.members.map((m) => (
+                <div
+                  key={m.odId}
+                  className={`w-3 h-3 rounded-full ${
+                    m.gamesLoaded ? 'bg-[#39ff14]' : 'bg-gray-700 animate-pulse'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-gray-600 font-mono text-sm mt-4">
+              {party.members.filter(m => m.gamesLoaded).length} / {party.members.length} ready
+            </p>
+          </div>
+        )}
+
+        {/* The Roll Zone */}
         {allReady && (
-          <div className="bg-white/5 backdrop-blur rounded-2xl p-8 text-center">
+          <div className="bg-[#12121a] border-2 border-[#39ff14]/30 rounded-2xl p-8 text-center">
             {commonGames.length === 0 ? (
               <>
-                <div className="text-6xl mb-4">😢</div>
-                <h2 className="text-2xl font-bold mb-4">No Common Games Found</h2>
-                <p className="text-gray-400">
-                  Your squad doesn&apos;t share any multiplayer games on Steam.
-                  Time to do some shopping!
+                <div className="text-6xl mb-4">💀</div>
+                <h2 className="text-2xl font-black text-red-500 mb-2">NO MATCHES</h2>
+                <p className="text-gray-500 font-mono">
+                  Your squad doesn&apos;t share any multiplayer games.<br/>
+                  Time for a Steam sale.
                 </p>
               </>
             ) : (
               <>
-                <h2 className="text-2xl font-bold mb-2">
-                  🎲 {commonGames.length} Games in Common!
-                </h2>
-                <p className="text-gray-400 mb-6">
-                  Ready to decide what to play?
-                </p>
+                <div className="text-gray-500 font-mono text-sm mb-2">
+                  {commonGames.length} GAMES IN COMMON
+                </div>
 
                 {/* Selected Game Display */}
                 {selectedGame && (
-                  <div className={`bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-2xl p-8 mb-6 transition-all ${rolling ? 'animate-pulse' : ''}`}>
-                    <div className="text-4xl font-bold">
+                  <div className={`my-6 p-6 rounded-xl ${rolling ? 'bg-[#0a0a0f]' : 'bg-gradient-to-br from-[#39ff14]/20 to-[#ff6b35]/20'} ${!rolling && 'celebrate'}`}>
+                    <div className={`text-3xl font-black ${rolling ? 'text-gray-400' : 'text-white'}`}>
                       {selectedGame.name}
                     </div>
                     {!rolling && (
                       <a
                         href={`steam://run/${selectedGame.appid}`}
-                        className="inline-block mt-4 bg-green-600 hover:bg-green-500 px-6 py-2 rounded-lg font-semibold transition-colors"
+                        className="inline-flex items-center gap-2 mt-4 bg-[#39ff14] hover:bg-[#5fff3f] text-black px-6 py-3 rounded-lg font-bold transition-all hover:scale-105"
                       >
-                        🚀 Launch Game
+                        🚀 LAUNCH GAME
                       </a>
                     )}
                   </div>
                 )}
 
+                {/* The Big Roll Button */}
                 <button
                   onClick={rollGame}
                   disabled={rolling}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 px-12 py-6 rounded-2xl font-bold text-2xl transition-all hover:scale-105 disabled:opacity-70"
+                  className={`relative px-16 py-8 rounded-2xl font-black text-3xl uppercase tracking-wider transition-all ${
+                    rolling 
+                      ? 'bg-gray-800 text-gray-500' 
+                      : 'bg-gradient-to-r from-[#39ff14] to-[#ff6b35] text-black hover:scale-105'
+                  }`}
+                  style={!rolling ? { boxShadow: '0 0 40px #39ff1450, 0 0 80px #ff6b3530' } : {}}
                 >
-                  {rolling ? '🎰 Rolling...' : '🎲 ROLL!'}
+                  {rolling ? (
+                    <span className="flex items-center gap-3">
+                      <span className="slot-spin inline-block">🎰</span>
+                      ROLLING...
+                    </span>
+                  ) : (
+                    '🎲 ROLL!'
+                  )}
                 </button>
 
                 {/* Game List */}
                 <details className="mt-8 text-left">
-                  <summary className="cursor-pointer text-gray-400 hover:text-white">
+                  <summary className="cursor-pointer text-gray-600 hover:text-gray-400 font-mono text-sm">
                     View all {commonGames.length} games
                   </summary>
-                  <div className="mt-4 max-h-64 overflow-y-auto bg-black/20 rounded-xl p-4">
-                    <ul className="space-y-1 text-sm">
+                  <div className="mt-4 max-h-48 overflow-y-auto bg-[#0a0a0f] rounded-lg p-4">
+                    <ul className="space-y-1 font-mono text-xs">
                       {commonGames.map((game) => (
-                        <li key={game.appid} className="text-gray-300">
+                        <li key={game.appid} className="text-gray-500 hover:text-gray-300">
                           {game.name}
                         </li>
                       ))}
@@ -285,22 +349,6 @@ export default function PartyClient({
             )}
           </div>
         )}
-
-        {/* Waiting state */}
-        {myGamesLoaded && !allReady && (
-          <div className="bg-white/5 backdrop-blur rounded-2xl p-8 text-center">
-            <div className="animate-bounce text-4xl mb-4">⏳</div>
-            <h2 className="text-xl font-bold mb-2">Waiting for Squad</h2>
-            <p className="text-gray-400">
-              {party.members.filter(m => m.gamesLoaded).length} of {party.members.length} players ready
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Future ad slot */}
-      <div className="fixed bottom-4 right-4 w-64 h-16 opacity-0">
-        {/* Ad placeholder */}
       </div>
     </main>
   );
