@@ -9,6 +9,7 @@ interface PartyMember {
   personaname: string;
   avatarfull: string;
   gamesLoaded: boolean;
+  genreVotes?: string[];
 }
 
 interface Party {
@@ -27,7 +28,30 @@ interface Session {
 interface Game {
   appid: number;
   name: string;
+  genres: string[];
 }
+
+interface VoteInfo {
+  odId: string;
+  personaname: string;
+  genreVotes: string[];
+}
+
+// Genre emoji mapping for fun
+const GENRE_EMOJI: Record<string, string> = {
+  'Action': '💥',
+  'Adventure': '🗺️',
+  'Casual': '😎',
+  'Indie': '🎨',
+  'MMO': '🌍',
+  'Racing': '🏎️',
+  'RPG': '⚔️',
+  'Simulation': '🎛️',
+  'Sports': '⚽',
+  'Strategy': '🧠',
+  'Free to Play': '🆓',
+  'Early Access': '🚧',
+};
 
 export default function PartyClient({ 
   initialParty, 
@@ -39,13 +63,21 @@ export default function PartyClient({
   const router = useRouter();
   const [party, setParty] = useState(initialParty);
   const [loadingGames, setLoadingGames] = useState(false);
-  const [myGamesLoaded, setMyGamesLoaded] = useState(false);
+  const [myGamesLoaded, setMyGamesLoaded] = useState(
+    initialParty.members.find(m => m.odId === session.steamId)?.gamesLoaded || false
+  );
   const [commonGames, setCommonGames] = useState<Game[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [allReady, setAllReady] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [rolling, setRolling] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  
+  // Genre voting state
+  const [myGenreVotes, setMyGenreVotes] = useState<string[]>([]);
+  const [allVotes, setAllVotes] = useState<VoteInfo[]>([]);
+  const [filteredCount, setFilteredCount] = useState(0);
 
   // Poll for party updates
   useEffect(() => {
@@ -54,18 +86,26 @@ export default function PartyClient({
       if (res.ok) {
         const data = await res.json();
         setParty(data.party);
+        
+        // Update my loaded status from party
+        const me = data.party.members.find((m: PartyMember) => m.odId === session.steamId);
+        if (me?.gamesLoaded) setMyGamesLoaded(true);
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [party.code]);
+  }, [party.code, session.steamId]);
 
   // Check for common games
-  const checkCommonGames = useCallback(async () => {
-    const res = await fetch(`/api/games/common?code=${party.code}`);
+  const checkCommonGames = useCallback(async (includeFiltered = false) => {
+    const res = await fetch(`/api/games/common?code=${party.code}&filtered=${includeFiltered}`);
     const data = await res.json();
+    
     if (data.ready) {
       setAllReady(true);
       setCommonGames(data.commonGames);
+      setAvailableGenres(data.availableGenres || []);
+      setAllVotes(data.votes || []);
+      setFilteredCount(data.filteredCount || data.commonGames.length);
     }
   }, [party.code]);
 
@@ -74,6 +114,16 @@ export default function PartyClient({
       checkCommonGames();
     }
   }, [party.members, checkCommonGames]);
+
+  // Poll for vote updates when in voting phase
+  useEffect(() => {
+    if (!allReady) return;
+    
+    const interval = setInterval(() => {
+      checkCommonGames(true);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [allReady, checkCommonGames]);
 
   const loadMyGames = async () => {
     setLoadingGames(true);
@@ -88,6 +138,24 @@ export default function PartyClient({
     setLoadingGames(false);
   };
 
+  const toggleGenreVote = async (genre: string) => {
+    const newVotes = myGenreVotes.includes(genre)
+      ? myGenreVotes.filter(g => g !== genre)
+      : [...myGenreVotes, genre];
+    
+    setMyGenreVotes(newVotes);
+    
+    // Send vote to server
+    await fetch('/api/games/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partyCode: party.code, genres: newVotes }),
+    });
+    
+    // Refresh filtered count
+    checkCommonGames(true);
+  };
+
   const copyCode = () => {
     navigator.clipboard.writeText(party.code);
     setCopied(true);
@@ -99,8 +167,13 @@ export default function PartyClient({
     router.push('/dashboard');
   };
 
-  const rollGame = () => {
-    if (commonGames.length === 0) return;
+  const rollGame = async () => {
+    // Get filtered games based on votes
+    const res = await fetch(`/api/games/common?code=${party.code}&filtered=true`);
+    const data = await res.json();
+    const gamesToRoll = data.commonGames || commonGames;
+    
+    if (gamesToRoll.length === 0) return;
     
     setRolling(true);
     setSelectedGame(null);
@@ -110,20 +183,33 @@ export default function PartyClient({
     let count = 0;
     const maxCount = 25;
     const interval = setInterval(() => {
-      const randomIdx = Math.floor(Math.random() * commonGames.length);
-      setSelectedGame(commonGames[randomIdx]);
+      const randomIdx = Math.floor(Math.random() * gamesToRoll.length);
+      setSelectedGame(gamesToRoll[randomIdx]);
       count++;
       
       if (count >= maxCount) {
         clearInterval(interval);
         setRolling(false);
-        const finalIdx = Math.floor(Math.random() * commonGames.length);
-        setSelectedGame(commonGames[finalIdx]);
+        const finalIdx = Math.floor(Math.random() * gamesToRoll.length);
+        setSelectedGame(gamesToRoll[finalIdx]);
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
       }
-    }, 80 + count * 5); // Gradually slow down
+    }, 80 + count * 5);
   };
+
+  // Get all genres that have at least one vote
+  const getVotedGenres = () => {
+    const genres = new Set<string>();
+    for (const vote of allVotes) {
+      for (const g of vote.genreVotes) {
+        genres.add(g);
+      }
+    }
+    return genres;
+  };
+
+  const votedGenres = getVotedGenres();
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white p-6 relative overflow-hidden">
@@ -215,6 +301,16 @@ export default function PartyClient({
                       <span className="ml-2 text-gray-600 text-xs">(you)</span>
                     )}
                   </div>
+                  {/* Show member's genre votes */}
+                  {allReady && member.gamesLoaded && (
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {(allVotes.find(v => v.odId === member.odId)?.genreVotes || []).map(g => (
+                        <span key={g} className="text-xs bg-[#39ff14]/20 text-[#39ff14] px-1.5 py-0.5 rounded">
+                          {GENRE_EMOJI[g] || '🎮'} {g}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="text-xs font-mono">
                   {member.gamesLoaded ? (
@@ -274,88 +370,135 @@ export default function PartyClient({
           </div>
         )}
 
-        {/* The Roll Zone */}
+        {/* Genre Voting & Roll Zone */}
         {allReady && (
-          <div className="bg-[#12121a] border-2 border-[#39ff14]/30 rounded-2xl p-8 text-center">
+          <div className="space-y-6">
             {commonGames.length === 0 ? (
-              <>
+              <div className="bg-[#12121a] border-2 border-red-500/30 rounded-2xl p-8 text-center">
                 <div className="text-6xl mb-4">💀</div>
                 <h2 className="text-2xl font-black text-red-500 mb-2">NO MATCHES</h2>
                 <p className="text-gray-500 font-mono">
                   Your squad doesn&apos;t share any multiplayer games.<br/>
                   Time for a Steam sale.
                 </p>
-              </>
+              </div>
             ) : (
               <>
-                <div className="text-gray-500 font-mono text-sm mb-2">
-                  {commonGames.length} GAMES IN COMMON
-                </div>
-
-                {/* Selected Game Display */}
-                {selectedGame && (
-                  <div className={`my-6 p-6 rounded-xl ${rolling ? 'bg-[#0a0a0f]' : 'bg-gradient-to-br from-[#39ff14]/20 to-[#ff6b35]/20'} ${!rolling && 'celebrate'}`}>
-                    <div className={`text-3xl font-black ${rolling ? 'text-gray-400' : 'text-white'}`}>
-                      {selectedGame.name}
+                {/* Genre Voting */}
+                {availableGenres.length > 0 && (
+                  <div className="bg-[#12121a] border border-gray-800 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-sm font-mono text-gray-500">WHAT ARE YOU FEELING?</h2>
+                      <span className="text-xs text-gray-600 font-mono">
+                        {votedGenres.size > 0 
+                          ? `${filteredCount} games match` 
+                          : `${commonGames.length} games total`}
+                      </span>
                     </div>
-                    {!rolling && (
-                      <a
-                        href={`steam://run/${selectedGame.appid}`}
-                        className="inline-flex items-center gap-2 mt-4 bg-[#39ff14] hover:bg-[#5fff3f] text-black px-6 py-3 rounded-lg font-bold transition-all hover:scale-105"
-                      >
-                        🚀 LAUNCH GAME
-                      </a>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {availableGenres.map((genre) => {
+                        const isSelected = myGenreVotes.includes(genre);
+                        const hasAnyVote = votedGenres.has(genre);
+                        
+                        return (
+                          <button
+                            key={genre}
+                            onClick={() => toggleGenreVote(genre)}
+                            className={`px-3 py-2 rounded-lg font-mono text-sm transition-all ${
+                              isSelected
+                                ? 'bg-[#39ff14] text-black'
+                                : hasAnyVote
+                                ? 'bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/50'
+                                : 'bg-[#0a0a0f] text-gray-400 border border-gray-700 hover:border-gray-500'
+                            }`}
+                          >
+                            {GENRE_EMOJI[genre] || '🎮'} {genre}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-3 font-mono">
+                      Pick genres you&apos;re in the mood for, or leave blank to roll all
+                    </p>
                   </div>
                 )}
 
-                {/* The Big Roll Button */}
-                <button
-                  onClick={rollGame}
-                  disabled={rolling}
-                  className={`relative px-16 py-8 rounded-2xl font-black text-3xl uppercase tracking-wider transition-all ${
-                    rolling 
-                      ? 'bg-gray-800 text-gray-500' 
-                      : 'bg-gradient-to-r from-[#39ff14] to-[#ff6b35] text-black hover:scale-105'
-                  }`}
-                  style={!rolling ? { boxShadow: '0 0 40px #39ff1450, 0 0 80px #ff6b3530' } : {}}
-                >
-                  {rolling ? (
-                    <span className="flex items-center gap-3">
-                      <span className="slot-spin inline-block">🎰</span>
-                      ROLLING...
-                    </span>
-                  ) : (
-                    '🎲 ROLL!'
-                  )}
-                </button>
-
-                {/* Game List */}
-                <details className="mt-8 text-left">
-                  <summary className="cursor-pointer text-gray-600 hover:text-gray-400 font-mono text-sm">
-                    View all {commonGames.length} games
-                  </summary>
-                  <div className="mt-4 max-h-96 overflow-y-auto bg-[#0a0a0f] rounded-lg p-4">
-                    <ul className="space-y-2">
-                      {commonGames.map((game) => (
-                        <li 
-                          key={game.appid} 
-                          className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-[#12121a] transition-colors"
-                        >
-                          <span className="font-mono text-sm text-gray-300 flex-1">
-                            {game.name}
-                          </span>
-                          <a
-                            href={`steam://run/${game.appid}`}
-                            className="inline-flex items-center gap-1.5 bg-[#39ff14]/20 hover:bg-[#39ff14]/30 text-[#39ff14] px-3 py-1.5 rounded text-xs font-bold transition-all hover:scale-105 border border-[#39ff14]/30"
-                          >
-                            🚀 Launch
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
+                {/* Roll Section */}
+                <div className="bg-[#12121a] border-2 border-[#39ff14]/30 rounded-2xl p-8 text-center">
+                  <div className="text-gray-500 font-mono text-sm mb-2">
+                    {votedGenres.size > 0 
+                      ? `ROLLING FROM ${filteredCount} GAMES`
+                      : `${commonGames.length} GAMES IN COMMON`}
                   </div>
-                </details>
+
+                  {/* Selected Game Display */}
+                  {selectedGame && (
+                    <div className={`my-6 p-6 rounded-xl ${rolling ? 'bg-[#0a0a0f]' : 'bg-gradient-to-br from-[#39ff14]/20 to-[#ff6b35]/20'} ${!rolling && 'celebrate'}`}>
+                      <div className={`text-3xl font-black ${rolling ? 'text-gray-400' : 'text-white'}`}>
+                        {selectedGame.name}
+                      </div>
+                      {!rolling && selectedGame.genres.length > 0 && (
+                        <div className="flex gap-2 justify-center mt-2 flex-wrap">
+                          {selectedGame.genres.map(g => (
+                            <span key={g} className="text-xs bg-white/10 text-gray-400 px-2 py-1 rounded">
+                              {GENRE_EMOJI[g] || '🎮'} {g}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {!rolling && (
+                        <a
+                          href={`steam://run/${selectedGame.appid}`}
+                          className="inline-flex items-center gap-2 mt-4 bg-[#39ff14] hover:bg-[#5fff3f] text-black px-6 py-3 rounded-lg font-bold transition-all hover:scale-105"
+                        >
+                          🚀 LAUNCH GAME
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* The Big Roll Button */}
+                  <button
+                    onClick={rollGame}
+                    disabled={rolling || (votedGenres.size > 0 && filteredCount === 0)}
+                    className={`relative px-16 py-8 rounded-2xl font-black text-3xl uppercase tracking-wider transition-all ${
+                      rolling 
+                        ? 'bg-gray-800 text-gray-500' 
+                        : 'bg-gradient-to-r from-[#39ff14] to-[#ff6b35] text-black hover:scale-105'
+                    } disabled:opacity-50`}
+                    style={!rolling ? { boxShadow: '0 0 40px #39ff1450, 0 0 80px #ff6b3530' } : {}}
+                  >
+                    {rolling ? (
+                      <span className="flex items-center gap-3">
+                        <span className="slot-spin inline-block">🎰</span>
+                        ROLLING...
+                      </span>
+                    ) : (
+                      '🎲 ROLL!'
+                    )}
+                  </button>
+
+                  {/* Game List */}
+                  <details className="mt-8 text-left">
+                    <summary className="cursor-pointer text-gray-600 hover:text-gray-400 font-mono text-sm">
+                      View all {commonGames.length} games
+                    </summary>
+                    <div className="mt-4 max-h-48 overflow-y-auto bg-[#0a0a0f] rounded-lg p-4">
+                      <ul className="space-y-1 font-mono text-xs">
+                        {commonGames.map((game) => (
+                          <li key={game.appid} className="text-gray-500 hover:text-gray-300 flex items-center gap-2">
+                            <span>{game.name}</span>
+                            {game.genres.length > 0 && (
+                              <span className="text-gray-700">
+                                ({game.genres.map(g => GENRE_EMOJI[g] || '🎮').join('')})
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </details>
+                </div>
               </>
             )}
           </div>

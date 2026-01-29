@@ -11,12 +11,10 @@ export interface SteamGame {
   img_icon_url?: string;
 }
 
-export interface GameDetails {
+export interface GameWithGenres {
   appid: number;
   name: string;
-  isMultiplayer: boolean;
-  headerImage?: string;
-  categories?: { id: number; description: string }[];
+  genres: string[];
 }
 
 // ALL multiplayer-related category IDs from Steam
@@ -34,6 +32,25 @@ const MULTIPLAYER_CATEGORIES = [
   49,  // PvP
 ];
 
+// Standardized genre categories for voting
+const GENRE_MAP: Record<string, string> = {
+  'Action': 'Action',
+  'Adventure': 'Adventure',
+  'Casual': 'Casual',
+  'Indie': 'Indie',
+  'Massively Multiplayer': 'MMO',
+  'Racing': 'Racing',
+  'RPG': 'RPG',
+  'Simulation': 'Simulation',
+  'Sports': 'Sports',
+  'Strategy': 'Strategy',
+  'Free to Play': 'Free to Play',
+  'Early Access': 'Early Access',
+  // Map some common ones
+  'Violent': 'Action',
+  'Gore': 'Action',
+};
+
 export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
   const url = `${STEAM_API_BASE}/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_appinfo=true&include_played_free_games=true&format=json`;
   
@@ -44,28 +61,41 @@ export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
   return data.response?.games || [];
 }
 
-export async function checkIfMultiplayer(appId: number): Promise<boolean> {
+interface StoreGameDetails {
+  isMultiplayer: boolean;
+  genres: string[];
+}
+
+export async function getGameDetailsFromStore(appId: number): Promise<StoreGameDetails | null> {
   try {
     const url = `${STEAM_STORE_BASE}/api/appdetails?appids=${appId}`;
     const res = await fetch(url, {
       headers: { 'Accept-Language': 'en-US,en;q=0.9' },
     });
     
-    if (!res.ok) return true; // If we can't check, assume it might be multiplayer
+    if (!res.ok) return null;
     
     const data = await res.json();
     const gameData = data[appId.toString()];
     
     if (!gameData?.success || !gameData.data) {
-      return true; // Can't verify, include it
+      return null;
     }
     
     const categories = gameData.data.categories || [];
-    return categories.some((cat: { id: number }) => 
+    const isMultiplayer = categories.some((cat: { id: number }) => 
       MULTIPLAYER_CATEGORIES.includes(cat.id)
     );
+    
+    // Extract and normalize genres
+    const rawGenres = gameData.data.genres || [];
+    const genres = rawGenres
+      .map((g: { description: string }) => GENRE_MAP[g.description] || g.description)
+      .filter((g: string, i: number, arr: string[]) => arr.indexOf(g) === i); // dedupe
+    
+    return { isMultiplayer, genres };
   } catch {
-    return true; // On error, include the game
+    return null;
   }
 }
 
@@ -76,10 +106,10 @@ export async function getAllGames(steamId: string): Promise<SteamGame[]> {
   return games;
 }
 
-// Find common games between all players, THEN filter for multiplayer
+// Find common games between all players, THEN filter for multiplayer, include genres
 export async function findCommonMultiplayerGames(
-  allPlayerGames: { appid: number; name: string }[][]
-): Promise<{ appid: number; name: string }[]> {
+  allPlayerGames: SteamGame[][]
+): Promise<GameWithGenres[]> {
   if (allPlayerGames.length === 0) return [];
   
   // Step 1: Find games ALL players own
@@ -98,20 +128,46 @@ export async function findCommonMultiplayerGames(
   
   console.log(`Found ${commonGames.length} common games, checking for multiplayer...`);
   
-  // Step 2: Filter to multiplayer only (much smaller list to check!)
-  const multiplayerGames: { appid: number; name: string }[] = [];
+  // Step 2: Filter to multiplayer and get genres
+  const multiplayerGames: GameWithGenres[] = [];
   
   for (const game of commonGames) {
-    const isMultiplayer = await checkIfMultiplayer(game.appid);
-    if (isMultiplayer) {
-      multiplayerGames.push(game);
+    const details = await getGameDetailsFromStore(game.appid);
+    
+    // If we can't get details, include it with empty genres (benefit of doubt)
+    if (details === null) {
+      multiplayerGames.push({ ...game, genres: [] });
+    } else if (details.isMultiplayer) {
+      multiplayerGames.push({ ...game, genres: details.genres });
     }
+    
     // Small delay to be nice to Steam API
     await new Promise(resolve => setTimeout(resolve, 200));
   }
   
   console.log(`${multiplayerGames.length} of ${commonGames.length} common games are multiplayer`);
   return multiplayerGames.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Get all unique genres from a list of games
+export function extractAllGenres(games: GameWithGenres[]): string[] {
+  const genreSet = new Set<string>();
+  for (const game of games) {
+    for (const genre of game.genres) {
+      genreSet.add(genre);
+    }
+  }
+  return [...genreSet].sort();
+}
+
+// Filter games by selected genres
+export function filterGamesByGenres(games: GameWithGenres[], selectedGenres: string[]): GameWithGenres[] {
+  if (selectedGenres.length === 0) return games;
+  
+  return games.filter(game => 
+    // Include if game has ANY of the selected genres, or if game has no genre data
+    game.genres.length === 0 || game.genres.some(g => selectedGenres.includes(g))
+  );
 }
 
 export function pickRandomGame<T>(games: T[]): T | null {

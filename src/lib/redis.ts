@@ -11,6 +11,7 @@ export interface PartyMember {
   personaname: string;
   avatarfull: string;
   gamesLoaded: boolean;
+  genreVotes?: string[];
 }
 
 export interface Party {
@@ -87,13 +88,48 @@ export async function updateMemberGamesLoaded(code: string, steamId: string): Pr
   }
 }
 
-// Store player's multiplayer games temporarily
+export async function updateMemberGenreVotes(code: string, steamId: string, genres: string[]): Promise<void> {
+  const party = await getParty(code);
+  if (!party) return;
+  
+  const member = party.members.find(m => m.odId === steamId);
+  if (member) {
+    member.genreVotes = genres;
+    await redis.set(`party:${code}`, JSON.stringify(party), { ex: PARTY_TTL });
+  }
+}
+
+// Get aggregated genre votes - genres that got at least one vote
+export function getAggregatedGenreVotes(party: Party): string[] {
+  const genreSet = new Set<string>();
+  for (const member of party.members) {
+    if (member.genreVotes) {
+      for (const genre of member.genreVotes) {
+        genreSet.add(genre);
+      }
+    }
+  }
+  return [...genreSet];
+}
+
+// Store player's games temporarily
 export async function storePlayerGames(steamId: string, partyCode: string, games: { appid: number; name: string }[]): Promise<void> {
   await redis.set(`games:${partyCode}:${steamId}`, JSON.stringify(games), { ex: PARTY_TTL });
 }
 
 export async function getPlayerGames(steamId: string, partyCode: string): Promise<{ appid: number; name: string }[] | null> {
   const data = await redis.get<string>(`games:${partyCode}:${steamId}`);
+  if (!data) return null;
+  return typeof data === 'string' ? JSON.parse(data) : data;
+}
+
+// Store common multiplayer games with genres (cached after first calculation)
+export async function storeCommonGames(partyCode: string, games: { appid: number; name: string; genres: string[] }[]): Promise<void> {
+  await redis.set(`common:${partyCode}`, JSON.stringify(games), { ex: PARTY_TTL });
+}
+
+export async function getCommonGames(partyCode: string): Promise<{ appid: number; name: string; genres: string[] }[] | null> {
+  const data = await redis.get<string>(`common:${partyCode}`);
   if (!data) return null;
   return typeof data === 'string' ? JSON.parse(data) : data;
 }
