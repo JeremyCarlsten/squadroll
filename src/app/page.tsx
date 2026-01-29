@@ -38,7 +38,6 @@ export default function Home() {
                 <span className="text-[#39ff14] neon-text neon-flicker">SQUAD</span>
                 <span className="text-[#ff6b35] neon-text">ROLL</span>
               </h1>
-              <span className="text-6xl">🎰</span>
             </div>
             <p className="text-xl text-gray-400 mt-6 font-mono">
               &gt; &quot;What should we play?&quot;_<span className="animate-pulse">|</span>
@@ -77,9 +76,8 @@ export default function Home() {
               className="inline-block bg-[#12121a] border-4 border-[#39ff14] text-[#39ff14] px-12 py-5 rounded-xl font-black text-2xl uppercase tracking-wider hover:bg-[#39ff14] hover:text-black transition-all hover:scale-105 neon-flicker"
               style={{ boxShadow: '0 0 20px #39ff14, 0 0 40px #39ff1440, inset 0 0 20px #39ff1420' }}
             >
-              🎮 Insert Coin
+              🎮 Sign in with Steam
             </a>
-            <p className="text-gray-600 text-sm">(Sign in with Steam)</p>
 
             {/* Join existing party */}
             <div className="pt-8 border-t border-gray-800">
