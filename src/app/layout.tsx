@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
+import Footer from "@/components/Footer";
+import KofiWidget from "@/components/KofiWidget";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -45,7 +48,18 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <div className="min-h-screen flex flex-col">
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </div>
+        <Script
+          src="https://datafa.st/js/script.js"
+          strategy="afterInteractive"
+          data-website-id="dfid_JaByuDVZXvJrhkYUGwFmC"
+          data-domain="squadroll.com"
+        />
       </body>
     </html>
   );
