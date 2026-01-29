@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import { getSession } from '@/lib/session';
 import DashboardClient from './DashboardClient';
 
@@ -9,5 +10,9 @@ export default async function Dashboard() {
     redirect('/');
   }
   
-  return <DashboardClient session={session} />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0f]" />}>
+      <DashboardClient session={session} />
+    </Suspense>
+  );
 }

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractSteamIdFromOpenId, getSteamProfile } from '@/lib/steam';
+import { getParty } from '@/lib/redis';
+
+function isValidPartyCode(code: string): boolean {
+  return /^[A-Z0-9]{6}$/.test(code.toUpperCase());
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -22,6 +27,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${appUrl}?error=invalid_steam_id`);
   }
   
+  // Get join code from return URL if present
+  const joinCode = searchParams.get('join');
+  
   // Get user profile
   try {
     const profile = await getSteamProfile(steamId);
@@ -36,7 +44,24 @@ export async function GET(request: NextRequest) {
       avatarfull: profile.avatarfull,
     };
     
-    const response = NextResponse.redirect(`${appUrl}/dashboard`);
+    // Validate join code if provided
+    let redirectUrl = `${appUrl}/dashboard`;
+    if (joinCode) {
+      const normalizedCode = joinCode.toUpperCase();
+      if (isValidPartyCode(normalizedCode)) {
+        // Verify party exists before redirecting
+        const party = await getParty(normalizedCode);
+        if (party) {
+          redirectUrl = `${appUrl}/party/${normalizedCode}`;
+        } else {
+          redirectUrl = `${appUrl}/dashboard?error=party_not_found`;
+        }
+      } else {
+        redirectUrl = `${appUrl}/dashboard?error=invalid_code`;
+      }
+    }
+    
+    const response = NextResponse.redirect(redirectUrl);
     response.cookies.set('steam_session', JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
 interface Session {
@@ -10,11 +10,26 @@ interface Session {
   avatarfull: string;
 }
 
+function isValidPartyCode(code: string): boolean {
+  return /^[A-Z0-9]{6}$/.test(code.toUpperCase());
+}
+
 export default function DashboardClient({ session }: { session: Session }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Check for error in URL params
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'party_not_found') {
+      setError('Party not found');
+    } else if (errorParam === 'invalid_code') {
+      setError('Invalid party code');
+    }
+  }, [searchParams]);
 
   const createParty = async () => {
     setLoading(true);
@@ -28,14 +43,25 @@ export default function DashboardClient({ session }: { session: Session }) {
 
   const joinParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!joinCode.trim()) return;
+    if (!joinCode.trim()) {
+      setError('Please enter a party code');
+      return;
+    }
+    
+    const normalizedCode = joinCode.toUpperCase().trim();
+    
+    // Validate code format
+    if (!isValidPartyCode(normalizedCode)) {
+      setError('Invalid party code format');
+      return;
+    }
     
     setLoading(true);
     setError('');
     
-    const res = await fetch(`/api/party/${joinCode}`, { method: 'POST' });
+    const res = await fetch(`/api/party/${normalizedCode}`, { method: 'POST' });
     if (res.ok) {
-      router.push(`/party/${joinCode.toUpperCase()}`);
+      router.push(`/party/${normalizedCode}`);
     } else {
       setError('Party not found');
     }

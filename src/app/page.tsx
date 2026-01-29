@@ -1,7 +1,49 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+function isValidPartyCode(code: string): boolean {
+  return /^[A-Z0-9]{6}$/.test(code.toUpperCase());
+}
+
+function UrlHandler({ 
+  onError, 
+  onJoinCode 
+}: { 
+  onError: (error: string) => void;
+  onJoinCode: (code: string) => void;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    const joinParam = searchParams.get('join');
+    const errorParam = searchParams.get('error');
+    
+    // Handle errors
+    if (errorParam === 'party_not_found') {
+      onError('Party not found');
+    } else if (errorParam === 'invalid_code') {
+      onError('Invalid party code');
+    } else if (errorParam === 'auth_failed') {
+      onError('Authentication failed');
+    }
+    
+    // Handle join redirect
+    if (joinParam) {
+      if (isValidPartyCode(joinParam)) {
+        router.push(`/api/auth/steam?join=${joinParam.toUpperCase()}`);
+      } else {
+        // Invalid code format - stay on page and show error
+        router.replace('/?error=invalid_code');
+        onError('Invalid party code');
+      }
+    }
+  }, [searchParams, router, onError, onJoinCode]);
+  
+  return null;
+}
 
 export default function Home() {
   const router = useRouter();
@@ -10,11 +52,23 @@ export default function Home() {
 
   const handleJoinParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!joinCode.trim()) return;
+    if (!joinCode.trim()) {
+      setError('Please enter a party code');
+      return;
+    }
     
-    const res = await fetch(`/api/party/${joinCode}`);
+    const normalizedCode = joinCode.toUpperCase().trim();
+    
+    // Validate code format
+    if (!isValidPartyCode(normalizedCode)) {
+      setError('Invalid party code format');
+      return;
+    }
+    
+    // Check if party exists
+    const res = await fetch(`/api/party/${normalizedCode}`);
     if (res.ok) {
-      router.push(`/api/auth/steam?join=${joinCode.toUpperCase()}`);
+      router.push(`/api/auth/steam?join=${normalizedCode}`);
     } else {
       setError('Party not found');
     }
@@ -22,6 +76,13 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white relative overflow-hidden">
+      <Suspense fallback={null}>
+        <UrlHandler 
+          onError={setError} 
+          onJoinCode={setJoinCode}
+        />
+      </Suspense>
+      
       {/* Ambient glow effects */}
       <div className="absolute top-20 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-[120px]" />
       <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-[120px]" />
