@@ -335,11 +335,22 @@ export default function PartyClient({
                   <summary className="cursor-pointer text-gray-600 hover:text-gray-400 font-mono text-sm">
                     View all {commonGames.length} games
                   </summary>
-                  <div className="mt-4 max-h-48 overflow-y-auto bg-[#0a0a0f] rounded-lg p-4">
-                    <ul className="space-y-1 font-mono text-xs">
+                  <div className="mt-4 max-h-96 overflow-y-auto bg-[#0a0a0f] rounded-lg p-4">
+                    <ul className="space-y-2">
                       {commonGames.map((game) => (
-                        <li key={game.appid} className="text-gray-500 hover:text-gray-300">
-                          {game.name}
+                        <li 
+                          key={game.appid} 
+                          className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-[#12121a] transition-colors"
+                        >
+                          <span className="font-mono text-sm text-gray-300 flex-1">
+                            {game.name}
+                          </span>
+                          <a
+                            href={`steam://run/${game.appid}`}
+                            className="inline-flex items-center gap-1.5 bg-[#39ff14]/20 hover:bg-[#39ff14]/30 text-[#39ff14] px-3 py-1.5 rounded text-xs font-bold transition-all hover:scale-105 border border-[#39ff14]/30"
+                          >
+                            🚀 Launch
+                          </a>
                         </li>
                       ))}
                     </ul>
