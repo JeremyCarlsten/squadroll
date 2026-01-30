@@ -10,19 +10,33 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   
-  // Verify OpenID response
-  const mode = searchParams.get('openid.mode');
-  if (mode !== 'id_res') {
-    return NextResponse.redirect(`${appUrl}?error=auth_failed`);
+  const USE_MOCK_DATA = process.env.USE_MOCK_STEAM === 'true' || 
+    (process.env.NODE_ENV === 'development' && !process.env.STEAM_API_KEY);
+  
+  let steamId: string | null = null;
+  
+  // Handle mock mode
+  if (USE_MOCK_DATA) {
+    const mockSteamId = searchParams.get('mock_steamid');
+    if (mockSteamId) {
+      steamId = mockSteamId;
+    }
+  } else {
+    // Verify OpenID response
+    const mode = searchParams.get('openid.mode');
+    if (mode !== 'id_res') {
+      return NextResponse.redirect(`${appUrl}?error=auth_failed`);
+    }
+    
+    // Extract Steam ID from claimed_id
+    const claimedId = searchParams.get('openid.claimed_id');
+    if (!claimedId) {
+      return NextResponse.redirect(`${appUrl}?error=no_claimed_id`);
+    }
+    
+    steamId = extractSteamIdFromOpenId(claimedId);
   }
   
-  // Extract Steam ID from claimed_id
-  const claimedId = searchParams.get('openid.claimed_id');
-  if (!claimedId) {
-    return NextResponse.redirect(`${appUrl}?error=no_claimed_id`);
-  }
-  
-  const steamId = extractSteamIdFromOpenId(claimedId);
   if (!steamId) {
     return NextResponse.redirect(`${appUrl}?error=invalid_steam_id`);
   }
