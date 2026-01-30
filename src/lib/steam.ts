@@ -108,7 +108,7 @@ export async function getAllGames(steamId: string): Promise<SteamGame[]> {
 
 // Find common games between all players, THEN filter for multiplayer, include genres
 export async function findCommonMultiplayerGames(
-  allPlayerGames: SteamGame[][]
+  allPlayerGames: { appid: number; name: string }[][]
 ): Promise<GameWithGenres[]> {
   if (allPlayerGames.length === 0) return [];
   
