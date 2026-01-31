@@ -4,6 +4,14 @@ const STEAM_API_KEY = process.env.STEAM_API_KEY!;
 const STEAM_API_BASE = 'https://api.steampowered.com';
 const STEAM_STORE_BASE = 'https://store.steampowered.com';
 
+// Use mock data in development if USE_MOCK_STEAM is set, or if no API key is configured
+const USE_MOCK_DATA = process.env.USE_MOCK_STEAM === 'true' || 
+  (process.env.NODE_ENV === 'development' && !STEAM_API_KEY);
+
+if (USE_MOCK_DATA) {
+  console.log('🎮 Using mock Steam API data for development');
+}
+
 export interface SteamGame {
   appid: number;
   name: string;
@@ -52,6 +60,11 @@ const GENRE_MAP: Record<string, string> = {
 };
 
 export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
+  if (USE_MOCK_DATA) {
+    const { getMockOwnedGames } = await import('./mockSteam');
+    return getMockOwnedGames(steamId);
+  }
+  
   const url = `${STEAM_API_BASE}/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_appinfo=true&include_played_free_games=true&format=json`;
   
   const res = await fetch(url);
@@ -67,6 +80,16 @@ interface StoreGameDetails {
 }
 
 export async function getGameDetailsFromStore(appId: number): Promise<StoreGameDetails | null> {
+  if (USE_MOCK_DATA) {
+    const { getMockGameDetails } = await import('./mockSteam');
+    const mockDetails = getMockGameDetails(appId);
+    if (mockDetails) {
+      return mockDetails;
+    }
+    // Return null for unknown games (same as real API)
+    return null;
+  }
+  
   try {
     const url = `${STEAM_STORE_BASE}/api/appdetails?appids=${appId}`;
     const res = await fetch(url, {
@@ -141,8 +164,10 @@ export async function findCommonMultiplayerGames(
       multiplayerGames.push({ ...game, genres: details.genres });
     }
     
-    // Small delay to be nice to Steam API
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Small delay to be nice to Steam API (skip in mock mode)
+    if (!USE_MOCK_DATA) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
   }
   
   console.log(`${multiplayerGames.length} of ${commonGames.length} common games are multiplayer`);
@@ -195,6 +220,11 @@ export function extractSteamIdFromOpenId(claimedId: string): string | null {
 }
 
 export async function getSteamProfile(steamId: string) {
+  if (USE_MOCK_DATA) {
+    const { getMockSteamProfile } = await import('./mockSteam');
+    return getMockSteamProfile(steamId);
+  }
+  
   const url = `${STEAM_API_BASE}/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamId}`;
   
   const res = await fetch(url);

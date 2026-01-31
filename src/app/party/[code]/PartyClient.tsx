@@ -67,6 +67,7 @@ export default function PartyClient({
     initialParty.members.find(m => m.odId === session.steamId)?.gamesLoaded || false
   );
   const [commonGames, setCommonGames] = useState<Game[]>([]);
+  const [allCommonGames, setAllCommonGames] = useState<Game[]>([]); // Full unfiltered list
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [allReady, setAllReady] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -102,10 +103,25 @@ export default function PartyClient({
     
     if (data.ready) {
       setAllReady(true);
-      setCommonGames(data.commonGames);
-      setAvailableGenres(data.availableGenres || []);
       setAllVotes(data.votes || []);
-      setFilteredCount(data.filteredCount || data.commonGames.length);
+      setFilteredCount(data.filteredCount || data.allGamesCount || data.commonGames.length);
+      
+      if (includeFiltered) {
+        // When filtering, update the displayed list but keep full list separate
+        setCommonGames(data.commonGames);
+        // Don't update availableGenres here - they should come from the full list
+      } else {
+        // When not filtering, update both the full list and displayed list
+        setAllCommonGames(data.commonGames);
+        setCommonGames(data.commonGames);
+        // Filter availableGenres to only include genres that exist in games
+        const gamesGenres = new Set<string>();
+        data.commonGames.forEach((game: Game) => {
+          game.genres.forEach((g: string) => gamesGenres.add(g));
+        });
+        const filteredGenres = (data.availableGenres || []).filter((g: string) => gamesGenres.has(g));
+        setAvailableGenres(filteredGenres);
+      }
     }
   }, [party.code]);
 
@@ -115,15 +131,38 @@ export default function PartyClient({
     }
   }, [party.members, checkCommonGames]);
 
-  // Poll for vote updates when in voting phase
+  // Poll for vote updates when in voting phase (only update votes, not games)
   useEffect(() => {
-    if (!allReady) return;
+    if (!allReady || allCommonGames.length === 0) return;
     
-    const interval = setInterval(() => {
-      checkCommonGames(true);
+    const interval = setInterval(async () => {
+      // Only fetch votes, don't refetch games
+      const res = await fetch(`/api/games/common?code=${party.code}&filtered=false`);
+      const data = await res.json();
+      if (data.ready) {
+        const newVotes = data.votes || [];
+        setAllVotes(newVotes);
+        
+        // Update filtered games based on all votes
+        const selectedGenres = new Set<string>();
+        newVotes.forEach((v: VoteInfo) => {
+          v.genreVotes.forEach((g: string) => selectedGenres.add(g));
+        });
+        
+        if (selectedGenres.size > 0) {
+          const filtered = allCommonGames.filter(game => 
+            game.genres.length === 0 || game.genres.some(g => selectedGenres.has(g))
+          );
+          setCommonGames(filtered);
+          setFilteredCount(filtered.length);
+        } else {
+          setCommonGames(allCommonGames);
+          setFilteredCount(allCommonGames.length);
+        }
+      }
     }, 3000);
     return () => clearInterval(interval);
-  }, [allReady, checkCommonGames]);
+  }, [allReady, party.code, allCommonGames]);
 
   const loadMyGames = async () => {
     setLoadingGames(true);
@@ -152,8 +191,30 @@ export default function PartyClient({
       body: JSON.stringify({ partyCode: party.code, genres: newVotes }),
     });
     
-    // Refresh filtered count
-    checkCommonGames(true);
+    // Update filtered games based on all votes
+    const allVotesSet = new Set<string>();
+    allVotes.forEach(v => {
+      v.genreVotes.forEach(g => allVotesSet.add(g));
+    });
+    newVotes.forEach(g => allVotesSet.add(g));
+    
+    if (allVotesSet.size > 0) {
+      const filtered = allCommonGames.filter(game => 
+        game.genres.length === 0 || game.genres.some(g => allVotesSet.has(g))
+      );
+      setCommonGames(filtered);
+      setFilteredCount(filtered.length);
+    } else {
+      setCommonGames(allCommonGames);
+      setFilteredCount(allCommonGames.length);
+    }
+    
+    // Refresh votes from server
+    const res = await fetch(`/api/games/common?code=${party.code}&filtered=false`);
+    const data = await res.json();
+    if (data.ready) {
+      setAllVotes(data.votes || []);
+    }
   };
 
   const copyCode = () => {
@@ -168,10 +229,8 @@ export default function PartyClient({
   };
 
   const rollGame = async () => {
-    // Get filtered games based on votes
-    const res = await fetch(`/api/games/common?code=${party.code}&filtered=true`);
-    const data = await res.json();
-    const gamesToRoll = data.commonGames || commonGames;
+    // Use current filtered games list
+    const gamesToRoll = commonGames.length > 0 ? commonGames : allCommonGames;
     
     if (gamesToRoll.length === 0) return;
     
