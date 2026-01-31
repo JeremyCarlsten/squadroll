@@ -271,22 +271,22 @@ export default function PartyClient({
   const votedGenres = getVotedGenres();
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white p-6 relative overflow-hidden">
-      {/* Ambient effects */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-[200px]" />
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-green-500/5 rounded-full blur-[200px]" />
+    <main className="min-h-screen bg-[#0a0a0f] text-white p-3 sm:p-6 relative overflow-hidden">
+      {/* Ambient effects - hidden on mobile */}
+      <div className="hidden sm:block absolute top-0 right-0 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-[200px]" />
+      <div className="hidden sm:block absolute bottom-0 left-0 w-[600px] h-[600px] bg-green-500/5 rounded-full blur-[200px]" />
       
       {/* Confetti effect */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-50">
-          {[...Array(50)].map((_, i) => (
+          {[...Array(30)].map((_, i) => (
             <div
               key={i}
               className="absolute animate-bounce"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `-20px`,
-                fontSize: '24px',
+                fontSize: '20px',
                 animationDelay: `${Math.random() * 2}s`,
                 animationDuration: `${2 + Math.random() * 2}s`,
               }}
@@ -299,43 +299,43 @@ export default function PartyClient({
 
       <div className="max-w-3xl mx-auto relative">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-black">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-black">
             <span className="text-[#39ff14]">SQUAD</span>
             <span className="text-[#ff6b35]">ROLL</span>
           </h1>
           <button
             onClick={leaveParty}
-            className="text-gray-600 hover:text-red-500 text-sm font-mono"
+            className="text-gray-600 hover:text-red-500 text-xs sm:text-sm font-mono"
           >
             [LEAVE]
           </button>
         </div>
 
         {/* Party Code Display */}
-        <div className="bg-[#12121a] border-2 border-[#ffd700]/30 rounded-xl p-6 mb-6 text-center relative overflow-hidden">
+        <div className="bg-[#12121a] border-2 border-[#ffd700]/30 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ffd700]/5 to-transparent" />
-          <p className="text-gray-500 font-mono text-xs mb-2">PARTY CODE</p>
+          <p className="text-gray-500 font-mono text-xs mb-1 sm:mb-2">PARTY CODE</p>
           <button
             onClick={copyCode}
-            className="text-5xl font-black tracking-[0.4em] text-[#ffd700] hover:scale-105 transition-transform neon-flicker"
+            className="text-3xl sm:text-5xl font-black tracking-[0.2em] sm:tracking-[0.4em] text-[#ffd700] hover:scale-105 transition-transform neon-flicker"
             style={{ textShadow: '0 0 20px #ffd700, 0 0 40px #ffd70050' }}
           >
             {party.code}
           </button>
-          <p className="text-xs text-gray-600 mt-2 font-mono">
-            {copied ? '✓ COPIED!' : 'CLICK TO COPY'}
+          <p className="text-xs text-gray-600 mt-1 sm:mt-2 font-mono">
+            {copied ? '✓ COPIED!' : 'TAP TO COPY'}
           </p>
         </div>
 
         {/* Squad Members */}
-        <div className="bg-[#12121a] border border-gray-800 rounded-xl p-5 mb-6">
-          <h2 className="text-sm font-mono text-gray-500 mb-4">SQUAD [{party.members.length}]</h2>
+        <div className="bg-[#12121a] border border-gray-800 rounded-xl p-3 sm:p-5 mb-4 sm:mb-6">
+          <h2 className="text-xs sm:text-sm font-mono text-gray-500 mb-3 sm:mb-4">SQUAD [{party.members.length}]</h2>
           <div className="grid gap-2">
             {party.members.map((member) => (
               <div
                 key={member.odId}
-                className={`flex items-center gap-3 rounded-lg p-3 transition-colors ${
+                className={`flex items-center gap-2 sm:gap-3 rounded-lg p-2 sm:p-3 transition-colors ${
                   member.gamesLoaded 
                     ? 'bg-[#39ff14]/10 border border-[#39ff14]/30' 
                     : 'bg-[#0a0a0f] border border-gray-800'
@@ -344,38 +344,41 @@ export default function PartyClient({
                 <Image
                   src={member.avatarfull}
                   alt={member.personaname}
-                  width={40}
-                  height={40}
-                  className={`rounded-full ring-2 ${member.gamesLoaded ? 'ring-[#39ff14]' : 'ring-gray-700'}`}
+                  width={32}
+                  height={32}
+                  className={`rounded-full ring-2 sm:w-10 sm:h-10 ${member.gamesLoaded ? 'ring-[#39ff14]' : 'ring-gray-700'}`}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono text-sm truncate">
+                  <div className="font-mono text-xs sm:text-sm truncate">
                     {member.personaname}
                     {member.odId === party.hostSteamId && (
-                      <span className="ml-2 text-[10px] bg-[#ff6b35] text-black px-1.5 py-0.5 rounded font-bold">
+                      <span className="ml-1 sm:ml-2 text-[8px] sm:text-[10px] bg-[#ff6b35] text-black px-1 sm:px-1.5 py-0.5 rounded font-bold">
                         HOST
                       </span>
                     )}
                     {member.odId === session.steamId && (
-                      <span className="ml-2 text-gray-600 text-xs">(you)</span>
+                      <span className="ml-1 text-gray-600 text-[10px] sm:text-xs">(you)</span>
                     )}
                   </div>
                   {/* Show member's genre votes */}
                   {allReady && member.gamesLoaded && (
                     <div className="flex gap-1 mt-1 flex-wrap">
-                      {(allVotes.find(v => v.odId === member.odId)?.genreVotes || []).map(g => (
-                        <span key={g} className="text-xs bg-[#39ff14]/20 text-[#39ff14] px-1.5 py-0.5 rounded">
-                          {GENRE_EMOJI[g] || '🎮'} {g}
+                      {(allVotes.find(v => v.odId === member.odId)?.genreVotes || []).slice(0, 3).map(g => (
+                        <span key={g} className="text-[10px] sm:text-xs bg-[#39ff14]/20 text-[#39ff14] px-1 sm:px-1.5 py-0.5 rounded">
+                          {GENRE_EMOJI[g] || '🎮'}
                         </span>
                       ))}
+                      {(allVotes.find(v => v.odId === member.odId)?.genreVotes || []).length > 3 && (
+                        <span className="text-[10px] text-gray-500">+{(allVotes.find(v => v.odId === member.odId)?.genreVotes || []).length - 3}</span>
+                      )}
                     </div>
                   )}
                 </div>
-                <div className="text-xs font-mono">
+                <div className="text-[10px] sm:text-xs font-mono whitespace-nowrap">
                   {member.gamesLoaded ? (
                     <span className="text-[#39ff14]">✓ READY</span>
                   ) : (
-                    <span className="text-yellow-500 animate-pulse">LOADING...</span>
+                    <span className="text-yellow-500 animate-pulse">LOADING</span>
                   )}
                 </div>
               </div>
@@ -385,16 +388,16 @@ export default function PartyClient({
 
         {/* Load Games Button */}
         {!myGamesLoaded && (
-          <div className="bg-[#12121a] border-2 border-blue-500/30 rounded-xl p-8 mb-6 text-center">
-            <div className="text-5xl mb-4">📚</div>
-            <h2 className="text-xl font-black text-blue-400 mb-2">LOAD YOUR LIBRARY</h2>
-            <p className="text-gray-500 font-mono text-sm mb-6">
+          <div className="bg-[#12121a] border-2 border-blue-500/30 rounded-xl p-6 sm:p-8 mb-4 sm:mb-6 text-center">
+            <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">📚</div>
+            <h2 className="text-lg sm:text-xl font-black text-blue-400 mb-2">LOAD YOUR LIBRARY</h2>
+            <p className="text-gray-500 font-mono text-xs sm:text-sm mb-4 sm:mb-6">
               Scanning for multiplayer games...
             </p>
             <button
               onClick={loadMyGames}
               disabled={loadingGames}
-              className="bg-blue-500 hover:bg-blue-400 text-black px-8 py-4 rounded-xl font-bold text-lg transition-all hover:scale-105 disabled:opacity-50"
+              className="bg-blue-500 hover:bg-blue-400 text-black px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all hover:scale-105 disabled:opacity-50"
               style={{ boxShadow: '0 0 20px #3b82f640' }}
             >
               {loadingGames ? (
@@ -410,20 +413,20 @@ export default function PartyClient({
 
         {/* Waiting for others */}
         {myGamesLoaded && !allReady && (
-          <div className="bg-[#12121a] border border-gray-800 rounded-xl p-8 text-center">
-            <div className="text-5xl mb-4 animate-bounce">⏳</div>
-            <h2 className="text-xl font-black text-gray-400 mb-2">WAITING FOR SQUAD</h2>
+          <div className="bg-[#12121a] border border-gray-800 rounded-xl p-6 sm:p-8 text-center">
+            <div className="text-4xl sm:text-5xl mb-3 sm:mb-4 animate-bounce">⏳</div>
+            <h2 className="text-lg sm:text-xl font-black text-gray-400 mb-2">WAITING FOR SQUAD</h2>
             <div className="flex justify-center gap-2 mt-4">
               {party.members.map((m) => (
                 <div
                   key={m.odId}
-                  className={`w-3 h-3 rounded-full ${
+                  className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${
                     m.gamesLoaded ? 'bg-[#39ff14]' : 'bg-gray-700 animate-pulse'
                   }`}
                 />
               ))}
             </div>
-            <p className="text-gray-600 font-mono text-sm mt-4">
+            <p className="text-gray-600 font-mono text-xs sm:text-sm mt-4">
               {party.members.filter(m => m.gamesLoaded).length} / {party.members.length} ready
             </p>
           </div>
@@ -431,13 +434,13 @@ export default function PartyClient({
 
         {/* Genre Voting & Roll Zone */}
         {allReady && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {commonGames.length === 0 ? (
-              <div className="bg-[#12121a] border-2 border-red-500/30 rounded-2xl p-8 text-center">
-                <div className="text-6xl mb-4">💀</div>
-                <h2 className="text-2xl font-black text-red-500 mb-2">NO MATCHES</h2>
-                <p className="text-gray-500 font-mono">
-                  Your squad doesn&apos;t share any multiplayer games.<br/>
+              <div className="bg-[#12121a] border-2 border-red-500/30 rounded-2xl p-6 sm:p-8 text-center">
+                <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">💀</div>
+                <h2 className="text-xl sm:text-2xl font-black text-red-500 mb-2">NO MATCHES</h2>
+                <p className="text-gray-500 font-mono text-sm">
+                  No shared multiplayer games.<br/>
                   Time for a Steam sale.
                 </p>
               </div>
@@ -445,16 +448,16 @@ export default function PartyClient({
               <>
                 {/* Genre Voting */}
                 {availableGenres.length > 0 && (
-                  <div className="bg-[#12121a] border border-gray-800 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-sm font-mono text-gray-500">WHAT ARE YOU FEELING?</h2>
-                      <span className="text-xs text-gray-600 font-mono">
+                  <div className="bg-[#12121a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <h2 className="text-xs sm:text-sm font-mono text-gray-500">WHAT ARE YOU FEELING?</h2>
+                      <span className="text-[10px] sm:text-xs text-gray-600 font-mono">
                         {votedGenres.size > 0 
-                          ? `${filteredCount} games match` 
-                          : `${commonGames.length} games total`}
+                          ? `${filteredCount} match` 
+                          : `${commonGames.length} total`}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {availableGenres.map((genre) => {
                         const isSelected = myGenreVotes.includes(genre);
                         const hasAnyVote = votedGenres.has(genre);
@@ -463,7 +466,7 @@ export default function PartyClient({
                           <button
                             key={genre}
                             onClick={() => toggleGenreVote(genre)}
-                            className={`px-3 py-2 rounded-lg font-mono text-sm transition-all ${
+                            className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg font-mono text-xs sm:text-sm transition-all ${
                               isSelected
                                 ? 'bg-[#39ff14] text-black'
                                 : hasAnyVote
@@ -471,20 +474,20 @@ export default function PartyClient({
                                 : 'bg-[#0a0a0f] text-gray-400 border border-gray-700 hover:border-gray-500'
                             }`}
                           >
-                            {GENRE_EMOJI[genre] || '🎮'} {genre}
+                            {GENRE_EMOJI[genre] || '🎮'} <span className="hidden xs:inline">{genre}</span>
                           </button>
                         );
                       })}
                     </div>
-                    <p className="text-xs text-gray-600 mt-3 font-mono">
-                      Pick genres you&apos;re in the mood for, or leave blank to roll all
+                    <p className="text-[10px] sm:text-xs text-gray-600 mt-2 sm:mt-3 font-mono">
+                      Pick genres or leave blank to roll all
                     </p>
                   </div>
                 )}
 
                 {/* Roll Section */}
-                <div className="bg-[#12121a] border-2 border-[#39ff14]/30 rounded-2xl p-8 text-center">
-                  <div className="text-gray-500 font-mono text-sm mb-2">
+                <div className="bg-[#12121a] border-2 border-[#39ff14]/30 rounded-2xl p-4 sm:p-8 text-center">
+                  <div className="text-gray-500 font-mono text-xs sm:text-sm mb-2">
                     {votedGenres.size > 0 
                       ? `ROLLING FROM ${filteredCount} GAMES`
                       : `${commonGames.length} GAMES IN COMMON`}
@@ -492,14 +495,14 @@ export default function PartyClient({
 
                   {/* Selected Game Display */}
                   {selectedGame && (
-                    <div className={`my-6 p-6 rounded-xl ${rolling ? 'bg-[#0a0a0f]' : 'bg-gradient-to-br from-[#39ff14]/20 to-[#ff6b35]/20'} ${!rolling && 'celebrate'}`}>
-                      <div className={`text-3xl font-black ${rolling ? 'text-gray-400' : 'text-white'}`}>
+                    <div className={`my-4 sm:my-6 p-4 sm:p-6 rounded-xl ${rolling ? 'bg-[#0a0a0f]' : 'bg-gradient-to-br from-[#39ff14]/20 to-[#ff6b35]/20'} ${!rolling && 'celebrate'}`}>
+                      <div className={`text-xl sm:text-3xl font-black ${rolling ? 'text-gray-400' : 'text-white'}`}>
                         {selectedGame.name}
                       </div>
                       {!rolling && selectedGame.genres.length > 0 && (
-                        <div className="flex gap-2 justify-center mt-2 flex-wrap">
-                          {selectedGame.genres.map(g => (
-                            <span key={g} className="text-xs bg-white/10 text-gray-400 px-2 py-1 rounded">
+                        <div className="flex gap-1.5 sm:gap-2 justify-center mt-2 flex-wrap">
+                          {selectedGame.genres.slice(0, 4).map(g => (
+                            <span key={g} className="text-[10px] sm:text-xs bg-white/10 text-gray-400 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
                               {GENRE_EMOJI[g] || '🎮'} {g}
                             </span>
                           ))}
@@ -508,9 +511,9 @@ export default function PartyClient({
                       {!rolling && (
                         <a
                           href={`steam://run/${selectedGame.appid}`}
-                          className="inline-flex items-center gap-2 mt-4 bg-[#39ff14] hover:bg-[#5fff3f] text-black px-6 py-3 rounded-lg font-bold transition-all hover:scale-105"
+                          className="inline-flex items-center gap-2 mt-3 sm:mt-4 bg-[#39ff14] hover:bg-[#5fff3f] text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-bold text-sm sm:text-base transition-all hover:scale-105"
                         >
-                          🚀 LAUNCH GAME
+                          🚀 LAUNCH
                         </a>
                       )}
                     </div>
@@ -520,7 +523,7 @@ export default function PartyClient({
                   <button
                     onClick={rollGame}
                     disabled={rolling || (votedGenres.size > 0 && filteredCount === 0)}
-                    className={`relative px-16 py-8 rounded-2xl font-black text-3xl uppercase tracking-wider transition-all ${
+                    className={`relative w-full sm:w-auto px-8 sm:px-16 py-5 sm:py-8 rounded-2xl font-black text-xl sm:text-3xl uppercase tracking-wider transition-all ${
                       rolling 
                         ? 'bg-gray-800 text-gray-500' 
                         : 'bg-gradient-to-r from-[#39ff14] to-[#ff6b35] text-black hover:scale-105'
@@ -528,7 +531,7 @@ export default function PartyClient({
                     style={!rolling ? { boxShadow: '0 0 40px #39ff1450, 0 0 80px #ff6b3530' } : {}}
                   >
                     {rolling ? (
-                      <span className="flex items-center gap-3">
+                      <span className="flex items-center justify-center gap-2 sm:gap-3">
                         <span className="slot-spin inline-block">🎰</span>
                         ROLLING...
                       </span>
@@ -538,20 +541,15 @@ export default function PartyClient({
                   </button>
 
                   {/* Game List */}
-                  <details className="mt-8 text-left">
-                    <summary className="cursor-pointer text-gray-600 hover:text-gray-400 font-mono text-sm">
+                  <details className="mt-6 sm:mt-8 text-left">
+                    <summary className="cursor-pointer text-gray-600 hover:text-gray-400 font-mono text-xs sm:text-sm">
                       View all {commonGames.length} games
                     </summary>
-                    <div className="mt-4 max-h-48 overflow-y-auto bg-[#0a0a0f] rounded-lg p-4">
-                      <ul className="space-y-1 font-mono text-xs">
+                    <div className="mt-3 sm:mt-4 max-h-40 sm:max-h-48 overflow-y-auto bg-[#0a0a0f] rounded-lg p-3 sm:p-4">
+                      <ul className="space-y-1 font-mono text-[10px] sm:text-xs">
                         {commonGames.map((game) => (
-                          <li key={game.appid} className="text-gray-500 hover:text-gray-300 flex items-center gap-2">
-                            <span>{game.name}</span>
-                            {game.genres.length > 0 && (
-                              <span className="text-gray-700">
-                                ({game.genres.map(g => GENRE_EMOJI[g] || '🎮').join('')})
-                              </span>
-                            )}
+                          <li key={game.appid} className="text-gray-500 hover:text-gray-300">
+                            {game.name}
                           </li>
                         ))}
                       </ul>

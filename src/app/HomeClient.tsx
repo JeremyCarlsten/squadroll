@@ -117,67 +117,66 @@ export default function HomeClient() {
         />
       </Suspense>
       
-      {/* Ambient glow effects */}
-      <div className="absolute top-20 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-[120px]" />
+      {/* Ambient glow effects - hidden on mobile for performance */}
+      <div className="hidden sm:block absolute top-20 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-[120px]" />
+      <div className="hidden sm:block absolute bottom-20 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-[120px]" />
       
-      <div className="container mx-auto px-4 py-16 relative">
+      <div className="container mx-auto px-4 py-8 sm:py-16 relative">
         <div className="text-center max-w-3xl mx-auto">
           
           {/* Logo - Neon Sign Style */}
-          <div className="mb-12">
+          <div className="mb-8 sm:mb-12">
             <div className="inline-block relative">
-              {/* Dice icons */}
-              <span className="text-6xl">🎲</span>
-              <h1 className="text-7xl font-black tracking-tight">
+              <span className="text-4xl sm:text-6xl">🎲</span>
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight">
                 <span className="text-[#39ff14] neon-text neon-flicker">SQUAD</span>
                 <span className="text-[#ff6b35] neon-text">ROLL</span>
               </h1>
             </div>
-            <p className="text-xl text-gray-400 mt-6 font-mono">
+            <p className="text-base sm:text-xl text-gray-400 mt-4 sm:mt-6 font-mono px-4">
               &gt; &quot;What should we play?&quot;_<span className="animate-pulse">|</span>
             </p>
           </div>
 
           {/* How it works - Arcade Cabinet Style */}
-          <div className="grid md:grid-cols-3 gap-4 my-16">
-            <div className="bg-[#12121a] border-2 border-[#39ff14]/30 rounded-lg p-6 hover:border-[#39ff14] transition-colors group">
-              <div className="text-5xl mb-4 group-hover:dice-bounce">🔌</div>
-              <h3 className="font-bold text-[#39ff14] text-lg mb-2">PLUG IN</h3>
-              <p className="text-gray-500 text-sm font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-8 sm:my-16 px-2">
+            <div className="bg-[#12121a] border-2 border-[#39ff14]/30 rounded-lg p-4 sm:p-6 hover:border-[#39ff14] transition-colors group">
+              <div className="text-3xl sm:text-5xl mb-2 sm:mb-4 group-hover:dice-bounce">🔌</div>
+              <h3 className="font-bold text-[#39ff14] text-base sm:text-lg mb-1 sm:mb-2">PLUG IN</h3>
+              <p className="text-gray-500 text-xs sm:text-sm font-mono">
                 Steam login. We peek at your games. That&apos;s it.
               </p>
             </div>
-            <div className="bg-[#12121a] border-2 border-[#ff6b35]/30 rounded-lg p-6 hover:border-[#ff6b35] transition-colors group">
-              <div className="text-5xl mb-4 group-hover:dice-bounce">👾</div>
-              <h3 className="font-bold text-[#ff6b35] text-lg mb-2">SQUAD UP</h3>
-              <p className="text-gray-500 text-sm font-mono">
+            <div className="bg-[#12121a] border-2 border-[#ff6b35]/30 rounded-lg p-4 sm:p-6 hover:border-[#ff6b35] transition-colors group">
+              <div className="text-3xl sm:text-5xl mb-2 sm:mb-4 group-hover:dice-bounce">👾</div>
+              <h3 className="font-bold text-[#ff6b35] text-base sm:text-lg mb-1 sm:mb-2">SQUAD UP</h3>
+              <p className="text-gray-500 text-xs sm:text-sm font-mono">
                 Create party. Share code. Friends join.
               </p>
             </div>
-            <div className="bg-[#12121a] border-2 border-[#ffd700]/30 rounded-lg p-6 hover:border-[#ffd700] transition-colors group">
-              <div className="text-5xl mb-4 group-hover:dice-bounce">🎰</div>
-              <h3 className="font-bold text-[#ffd700] text-lg mb-2">ROLL IT</h3>
-              <p className="text-gray-500 text-sm font-mono">
+            <div className="bg-[#12121a] border-2 border-[#ffd700]/30 rounded-lg p-4 sm:p-6 hover:border-[#ffd700] transition-colors group">
+              <div className="text-3xl sm:text-5xl mb-2 sm:mb-4 group-hover:dice-bounce">🎰</div>
+              <h3 className="font-bold text-[#ffd700] text-base sm:text-lg mb-1 sm:mb-2">ROLL IT</h3>
+              <p className="text-gray-500 text-xs sm:text-sm font-mono">
                 We find your shared games. Fate picks one.
               </p>
             </div>
           </div>
 
           {/* CTA - Big Arcade Button */}
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8 px-4">
             <a
               href="/api/auth/steam"
-              className="inline-block bg-[#12121a] border-4 border-[#39ff14] text-[#39ff14] px-12 py-5 rounded-xl font-black text-2xl uppercase tracking-wider hover:bg-[#39ff14] hover:text-black transition-all hover:scale-105 neon-flicker"
+              className="inline-block bg-[#12121a] border-3 sm:border-4 border-[#39ff14] text-[#39ff14] px-6 sm:px-12 py-4 sm:py-5 rounded-xl font-black text-lg sm:text-2xl uppercase tracking-wider hover:bg-[#39ff14] hover:text-black transition-all hover:scale-105 neon-flicker"
               style={{ boxShadow: '0 0 20px #39ff14, 0 0 40px #39ff1440, inset 0 0 20px #39ff1420' }}
             >
               🎮 Sign in with Steam
             </a>
 
             {/* Join existing party */}
-            <div className="pt-8 border-t border-gray-800">
-              <p className="text-gray-500 mb-4 font-mono text-sm">GOT A CODE?</p>
-              <form onSubmit={handleJoinParty} className="flex gap-3 max-w-xs mx-auto">
+            <div className="pt-6 sm:pt-8 border-t border-gray-800">
+              <p className="text-gray-500 mb-3 sm:mb-4 font-mono text-xs sm:text-sm">GOT A CODE?</p>
+              <form onSubmit={handleJoinParty} className="flex gap-2 sm:gap-3 max-w-xs mx-auto">
                 <input
                   type="text"
                   placeholder="XXXXXX"
@@ -188,12 +187,12 @@ export default function HomeClient() {
                     setShowToast(false);
                     lastErrorRef.current = '';
                   }}
-                  className="flex-1 bg-[#12121a] border-2 border-gray-700 rounded-lg px-4 py-3 text-center text-xl font-mono tracking-[0.3em] uppercase placeholder:text-gray-700 focus:outline-none focus:border-[#ff6b35] transition-colors"
+                  className="flex-1 bg-[#12121a] border-2 border-gray-700 rounded-lg px-3 sm:px-4 py-3 text-center text-lg sm:text-xl font-mono tracking-[0.2em] sm:tracking-[0.3em] uppercase placeholder:text-gray-700 focus:outline-none focus:border-[#ff6b35] transition-colors"
                   maxLength={6}
                 />
                 <button
                   type="submit"
-                  className="bg-[#ff6b35] hover:bg-[#ff8555] text-black px-6 py-3 rounded-lg font-bold transition-colors"
+                  className="bg-[#ff6b35] hover:bg-[#ff8555] text-black px-5 sm:px-6 py-3 rounded-lg font-bold transition-colors"
                 >
                   JOIN
                 </button>
